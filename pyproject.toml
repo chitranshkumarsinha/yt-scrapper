@@ -1,0 +1,29 @@
+[project]
+name = "main-folder"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "tukku", email = "cksinha844115@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "av>=11,<19",
+    "fastapi>=0.146.0",
+    "faster-whisper>=1.2.1",
+    "groq>=1.7.0",
+    "nvidia-cublas-cu12>=12.9.2.10",
+    "nvidia-cudnn-cu12>=9.27.0.42",
+    "python-dotenv>=1.2.4",
+    "qdrant-client>=1.19.1",
+    "sentence-transformers>=6.1.0",
+    "uvicorn>=0.54.0",
+    "yt-dlp>=2026.8.19",
+]
+
+[project.scripts]
+main-folder = "main_folder:main"
+
+[build-system]
+requires = ["uv_build>=0.12.7,<0.13.0"]
+build-backend = "uv_build"

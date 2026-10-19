@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Playlist Search</title>
+<style>
+  :root { --bg:#fff; --fg:#1a1a1a; --muted:#666; --card:#f4f4f6; --accent:#2563eb; --border:#ddd; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#161618; --fg:#eee; --muted:#9a9aa2; --card:#232327; --accent:#6ea0ff; --border:#38383e; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: system-ui, sans-serif; background:var(--bg); color:var(--fg); }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 24px 16px; }
+  h1 { margin: 0 0 16px; font-size: 1.4rem; }
+  .bar { display:flex; gap:8px; margin-bottom:20px; }
+  input { flex:1; padding:10px 12px; font-size:1rem; border:1px solid var(--border);
+          border-radius:8px; background:var(--card); color:var(--fg); }
+  button { padding:10px 18px; font-size:1rem; border:0; border-radius:8px;
+           background:var(--accent); color:#fff; cursor:pointer; }
+  .layout { display:grid; grid-template-columns: 1fr 1fr; gap:20px; }
+  @media (max-width: 800px) { .layout { grid-template-columns: 1fr; } }
+  #player-box { position:sticky; top:16px; align-self:start; aspect-ratio:16/9;
+                background:#000; border-radius:10px; overflow:hidden; }
+  #player-box iframe, #player { width:100%; height:100%; }
+  .answer { background:var(--card); padding:14px; border-radius:10px; margin-bottom:14px;
+            white-space:pre-wrap; line-height:1.5; }
+  .result { background:var(--card); padding:12px; border-radius:10px; margin-bottom:10px;
+            cursor:pointer; border:1px solid transparent; }
+  .result:hover { border-color:var(--accent); }
+  .result .title { font-weight:600; }
+  .result .time { color:var(--accent); font-variant-numeric: tabular-nums; margin-left:6px; }
+  .result .snippet { color:var(--muted); font-size:.9rem; margin-top:6px; }
+  .status { color:var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Search inside the playlist</h1>
+  <div class="bar">
+    <input id="q" placeholder="e.g. gradient descent, binary search, closures..." autofocus>
+    <button id="go">Search</button>
+  </div>
+
+  <div class="layout">
+    <div>
+      <div id="answer"></div>
+      <div id="results"></div>
+    </div>
+    <div id="player-box"><div id="player"></div></div>
+  </div>
+</div>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+<script>
+  let player = null;
+  let pending = null;
+
+  function onYouTubeIframeAPIReady() {
+    player = new YT.Player('player', {
+      width: '100%', height: '100%',
+      playerVars: { rel: 0 },
+      events: { onReady: () => { if (pending) { play(pending.id, pending.start); pending = null; } } }
+    });
+  }
+
+  function play(videoId, start) {
+    if (!player || !player.loadVideoById) { pending = { id: videoId, start }; return; }
+    player.loadVideoById({ videoId, startSeconds: Math.floor(start) });
+  }
+
+  const $ = id => document.getElementById(id);
+
+  async function search() {
+    const q = $('q').value.trim();
+    if (!q) return;
+    $('answer').innerHTML = '<div class="status">Searching...</div>';
+    $('results').innerHTML = '';
+    try {
+      const res = await fetch('/api/search?q=' + encodeURIComponent(q));
+      if (!res.ok) throw new Error('Server error ' + res.status);
+      const data = await res.json();
+      $('answer').innerHTML = '';
+      const a = document.createElement('div');
+      a.className = 'answer';
+      a.textContent = data.answer;
+      $('answer').appendChild(a);
+
+      data.results.forEach((r, i) => {
+        const el = document.createElement('div');
+        el.className = 'result';
+        const t = document.createElement('div');
+        t.className = 'title';
+        t.textContent = `[${i + 1}] ${r.title}`;
+        const time = document.createElement('span');
+        time.className = 'time';
+        time.textContent = r.time;
+        t.appendChild(time);
+        const s = document.createElement('div');
+        s.className = 'snippet';
+        s.textContent = r.text;
+        el.append(t, s);
+        el.onclick = () => play(r.video_id, r.start);
+        $('results').appendChild(el);
+      });
+
+      if (data.results.length) play(data.results[0].video_id, data.results[0].start);
+    } catch (e) {
+      $('answer').innerHTML = '<div class="status">Something went wrong: ' + e.message + '</div>';
+    }
+  }
+
+  $('go').onclick = search;
+  $('q').addEventListener('keydown', e => { if (e.key === 'Enter') search(); });
+</script>
+</body>
+</html>
