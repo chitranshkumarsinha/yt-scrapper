@@ -54,7 +54,7 @@ CHUNK_SECONDS = 45
 OVERLAP_SECONDS = 10
 UPSERT_BATCH = 128
 
-
+COOKIE_OPTS = {}
 # ============================================================
 # Helpers: retries and atomic file IO
 # ============================================================
@@ -67,6 +67,8 @@ def with_retry(fn, *args, tries=8, what="network call", **kwargs):
         except KeyboardInterrupt:
             raise
         except Exception as e:
+            if "not a bot" in str(e):
+                raise
             if attempt == tries:
                 raise
             wait = min(2 ** attempt, 60)
@@ -158,7 +160,9 @@ def download_audio(video):
         "no_warnings": True,
         "retries": 5,
         "fragment_retries": 5,
-        "sleep_interval": 2,             # be gentle with YouTube to avoid throttling
+        "sleep_interval": 5,
+        "max_sleep_interval": 15,
+        **COOKIE_OPTS,             # be gentle with YouTube to avoid throttling
         "postprocessors": [{
             "key": "FFmpegExtractAudio",
             "preferredcodec": "mp3",
@@ -245,6 +249,9 @@ def phase_transcribe(videos, args):
         except Exception as e:
             print(f"  FAILED: {type(e).__name__}: {e}")
             failed.append(title)
+            if "not a bot" in str(e):
+                print("YouTube is blocking downloads. Try again later or use cookies. Stopping.")
+                break
 
     return failed
 
@@ -418,7 +425,14 @@ def main():
     parser.add_argument("--model", default="small", help="Whisper model: tiny/base/small/medium")
     parser.add_argument("--batch-size", type=int, default=4, help="Whisper batch size (lower if GPU runs out of memory)")
     parser.add_argument("--cpu", action="store_true", help="Run Whisper on CPU instead of GPU")
+    parser.add_argument("--cookies-from-browser", dest="browser", help="firefox, edge or chrome")   # NEW
+    parser.add_argument("--cookies-file", help="path to a cookies.txt file")                        # NEW
     args = parser.parse_args()
+
+    if args.browser:                                                                # NEW
+        COOKIE_OPTS["cookiesfrombrowser"] = (args.browser,)                         # NEW
+    if args.cookies_file:                                                           # NEW
+        COOKIE_OPTS["cookiefile"] = args.cookies_file                               # NEW
 
     if args.phase in ("all", "transcribe") and not args.playlist_url:
         parser.error("playlist_url is required unless --phase upload")

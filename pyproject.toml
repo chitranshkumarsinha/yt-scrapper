@@ -9,6 +9,7 @@ authors = [
 requires-python = ">=3.12"
 dependencies = [
     "av>=11,<19",
+    "deno>=2.9.7",
     "fastapi>=0.146.0",
     "faster-whisper>=1.2.1",
     "groq>=1.7.0",
@@ -19,6 +20,7 @@ dependencies = [
     "sentence-transformers>=6.1.0",
     "uvicorn>=0.54.0",
     "yt-dlp>=2026.8.19",
+    "yt-dlp-ejs>=0.8.0",
 ]
 
 [project.scripts]
